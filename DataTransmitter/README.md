@@ -23,7 +23,7 @@ Currently, the main sketch (DataTransmitter.ino) is utilizing mock functions to 
 
 - mockGetTemperature (float)
 
-- mockGetPowerConsumption (float)
+- mockGetPowerConsumption (int)
 
 - mockGetLightLevel (boolean)
 

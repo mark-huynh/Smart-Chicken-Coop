@@ -38,12 +38,12 @@ float mockGetTemperature() {
   return mockTemperature;
 }
 
-int mockGetLightLevel() {
+bool mockGetLightLevel() {
   mockLightLvl = !mockLightLvl;
   return mockLightLvl;
 }
 
-bool mockGetPowerConsumption() {
+int mockGetPowerConsumption() {
   mockPowerLvl += 2;
   return mockPowerLvl;
 }
