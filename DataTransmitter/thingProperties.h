@@ -19,7 +19,7 @@ CloudTemperature temperature;
 CloudVolume waterLevel;
 CloudMass foodLevel;
 int powerConsumption;
-int lightLevel;
+CloudLight lightLevel;
 
 void initProperties(){
 

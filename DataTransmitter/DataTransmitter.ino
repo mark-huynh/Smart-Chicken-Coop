@@ -20,7 +20,7 @@ void setup() {
 float mockWaterLvl = 0;
 float mockFoodLvl = 0;
 float mockTemperature = 0;
-int mockLightLvl = 0;
+bool mockLightLvl = false;
 int mockPowerLvl = 0;
 
 float mockGetWaterLvl() {
@@ -38,12 +38,12 @@ float mockGetTemperature() {
   return mockTemperature;
 }
 
-int mockGetPowerConsumption() {
-  mockLightLvl += 1;
+int mockGetLightLevel() {
+  mockLightLvl = !mockLightLvl;
   return mockLightLvl;
 }
 
-int mockGetLightLevel() {
+bool mockGetPowerConsumption() {
   mockPowerLvl += 2;
   return mockPowerLvl;
 }
