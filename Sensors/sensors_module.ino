@@ -1,6 +1,16 @@
+/* Sensor Module Prototype Code
+ * Controls the sensors needed for the smart coop system and makes the results
+ * available for the other modules when integrated
+ * Author: Nicholas McBee
+ * Created: 1/25/2021
+ * Last Modified: 2/14/2021
+ */
+
 // Date and time functions using a DS3231 RTC connected via I2C and Wire lib
 #include "RTClib.h"
 RTC_DS3231 rtc;
+
+#include "NewPing.h"
 
 const byte photosensorPin = A0;
 
@@ -9,30 +19,27 @@ const byte thermistorPin = A1;
 const float c1 = 1.009249522e-03, c2 = 2.378405444e-04, c3 = 2.019202697e-07; 
 const int R3 = 10000; //Value of resistor in series with thermistor
 
-const byte foodTriggerPin = 3;
-const byte foodEchoPin = 4;
+const byte food_data_pin = 3;
+const byte foodEchoPin = 3;
 const byte waterTriggerPin = 5;
 const byte waterEchoPin = 5;
 const float foodDensity = 0.7; //grams per mL
-const float containerLength = 13.0;
+const float containerLength = 11.5;
 const float containerRadius = 6.25;
-//const float foodCapacity 
+const int samples = 5; //Number of ultrasonic readings to take per call
 
-
-
+NewPing food_sensor(food_data_pin, food_data_pin);
+ 
 
 int currTime[3];
-float lightLevel;
+bool lightLevel;
 float temp;
 float foodLevel, waterLevel;
 
 void setup () {
   pinMode(thermistorPin, INPUT);
   Serial.begin(57600);
-
-  pinMode(foodTriggerPin, OUTPUT);
-  pinMode(foodEchoPin, INPUT); 
-
+ 
   #ifndef ESP8266
     while (!Serial); // wait for serial port to connect. Needed for native USB
   #endif
@@ -46,23 +53,24 @@ void setup () {
 }
 
 void loop () {
+  //Update values and print to monitor
   getTime();
   temp = getTemp();
-  lightLevel = getLightLevel();
+  lightLevel = getIfDaylight();
   foodLevel = getFoodLevel();
   printData();
  
 
   delay(1000);
-  
 
- 
-
-   
 }
 
+/*Function: getFoodLevel
+ * Determines the depth of the food in the container from
+ * distance sensor and known constants.
+ */
 float getFoodLevel() {
-  float h1 = getFoodDistance(); //Distance of food from sensor
+  float h1 = get_food_distance(); //Distance of food from sensor
   float h2 = containerLength - h1; //Depth of food in container
   float volume = PI*containerRadius*containerRadius*h2; //Food volume in cm^3
   float mass = foodDensity*volume;
@@ -74,28 +82,24 @@ float getFoodLevel() {
  * Calculates the distance (in cm) of the food level from
  * the food ultrasonic sensor
  */
- float getFoodDistance() {
+ float get_food_distance() {
   float duration, cm;
-  
-  //Sends a 10uS pulse out from sensor
-  digitalWrite(foodTriggerPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(foodTriggerPin, LOW);
-
-  //Times how long it took for pulse to bounce back
-  duration = pulseIn(foodEchoPin, HIGH); 
-  cm = 0.017*duration; //Convert time delay to distance
-  return cm;
+  duration = food_sensor.ping_median(samples);
+  cm = (duration / 2) * 0.0343;
+  return cm; 
  }
 
 /*Function: getLightLevel
  * Reads analog value from photoresistor voltage divider
  * and provides a light level approximation.
  */
- float getLightLevel() {
+ bool getIfDaylight() {
   int adcVal = analogRead(photosensorPin); 
   float photoVo = 5*(float)adcVal/(1023); //Output voltage of voltage divider
-  return photoVo;
+  if(photoVo >= 4.17) { //Check if light level is at least 40 Lux
+    return true;
+  }
+  return false;
  }
 
 /*Function: getTemp
@@ -127,8 +131,10 @@ float getTemp() {
   Serial.print("Temperature (C): ");
   Serial.println(temp); 
 
-  Serial.print("Light Level: ");
-  Serial.println(lightLevel); 
+  if(lightLevel)
+    Serial.println("Daylight brightness detected");
+  else
+    Serial.println("Light level below daylight levels");
 
   Serial.print("Food Level: ");
   Serial.println(foodLevel); 
