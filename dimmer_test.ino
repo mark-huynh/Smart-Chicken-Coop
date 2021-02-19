@@ -14,7 +14,7 @@ const int lampPhotoPin = A6;  //Photoresistor used for heat lamp
 byte brightness_setting = 255; //Brightness setting for lamp
 bool lamp_malfunction = 0;    //Indicates malfunction when high 
 int currTime[3];              //Time array, holds dummy values for simulation
-int lampStartTime[3];         //On-time for the heat lamp for the current day in hours
+int lampStartTime;         //On-time for the heat lamp for the current day in hours
 float lampTime;
 float power_consumption = 0;    //Power consumed by lamp in Watt-hours
 
@@ -65,7 +65,6 @@ Serial.println("");
  * on current time and how bright it should be
  */
 void lamp_controller(){
-  update_lamp_time();
   int old_brightness = brightness_setting; //Saves current brightness
     
   if(brightness_setting == 255) //Checks lamp when fully turned on
@@ -93,20 +92,23 @@ void lamp_controller(){
     
 }
 
-void update_lamp_time() {
+/* Function: get_power_consumption
+ * Calculates the power consumption of the heat lamp since last checked
+ * and increments the daily consumption tracker
+ */
+float get_power_consumption() {
   float timeHours = 0;   //The current time of day expressed in hours
   timeHours += currTime[0];
   timeHours += currTime[1]/60;
   timeHours += currTime[2]/3600;
-  if(currTime[0] == 0) { //Reset time tally at midnight
-    lampTime = 0;
-  }
-  lampTime = timeHours - lampStartTime; 
   
-}
-
-float get_power_consumption() {
-  //lampTime = currTime;
+  if(currTime[0] == 0) { //Reset time and power tally at midnight
+    lampTime = 0;
+    power_consumption = 0;
+  }
+  lampTime = timeHours - lampStartTime; //Find lamp on-time since last polling
+  power_consumption += LAMP_WATTAGE*lampTime; //Watts * hours
+  lampStartTime = 0;   //Reset counter
 }
 
 /* Func: dim_lamp
