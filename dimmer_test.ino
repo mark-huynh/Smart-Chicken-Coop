@@ -3,10 +3,14 @@
  * operations using test time values.
  * Author: Nicholas McBee
  * Created: 2/16/2021
- * Last Modified: 2/18/2021
+ * Last Modified: 2/26/2021
  */
  
 #define LAMP_MALFUNCTION_TRESH 1000 //Comparison value for ADC brightness measurement
+#define LAMP_ON_AM 6                // Time that lamp will turn on in morning
+#define LAMP_OFF_AM 9               // Time lamp will turn off in morning
+#define LAMP_ON_PM 18               // Time lamp will turn on at night
+#define LAMP_OFF_PM 21              // Time lamp will turn off at night
 #define LAMP_WATTAGE 4              //Wattage rating of lamp bulb
 
 const int dimmerPin = 3;       //Pin for PWM control of dimmer board
@@ -14,8 +18,6 @@ const int lampPhotoPin = A6;  //Photoresistor used for heat lamp
 byte brightness_setting = 255; //Brightness setting for lamp
 bool lamp_malfunction = 0;    //Indicates malfunction when high 
 int currTime[3];              //Time array, holds dummy values for simulation
-int lampStartTime;         //On-time for the heat lamp for the current day in hours
-float lampTime;
 float power_consumption = 0;    //Power consumed by lamp in Watt-hours
 
 void setup() {
@@ -25,6 +27,7 @@ void setup() {
   currTime[2] = 0;
   while(currTime[0] < 21) { //Simulate time passing from midnight to 9pm
     lamp_controller();
+    power_consumption = get_power_consumption();
     currTime[0]++;
     print_data();
     delay(500);
@@ -53,6 +56,8 @@ Serial.print(":");
 Serial.print(currTime[1]);
 Serial.print(":");
 Serial.println(currTime[2]);
+Serial.print("Power Consumption: ");
+Serial.println(power_consumption);
 if(lamp_malfunction)
   Serial.println("Lamp malfunction detected");
 else
@@ -64,51 +69,32 @@ Serial.println("");
  * Determines if the heat lamp should be turned on based
  * on current time and how bright it should be
  */
-void lamp_controller(){
-  int old_brightness = brightness_setting; //Saves current brightness
-    
+void lamp_controller(){    
   if(brightness_setting == 255) //Checks lamp when fully turned on
     lamp_malfunction = check_lamp();
-  if((currTime[0] >= 6) && (currTime[0] < 9)) { //Turns on lamp in early morning
+  if((currTime[0] >= LAMP_ON_AM) && (currTime[0] < LAMP_OFF_AM)) { //Turns on lamp in early morning
     brightness_setting = 255;
   }
-  else if((currTime[0] >= 18) && (currTime[0] < 21)) { //Turns on lamp in evening
+  else if((currTime[0] >= LAMP_ON_PM) && (currTime[0] < LAMP_OFF_PM)) { //Turns on lamp in evening
     brightness_setting = 255;
   }
-  else if(currTime[0] == 21) { //Dim lamp until off at nighttime
+  else if(currTime[0] == LAMP_OFF_PM) { //Dim lamp until off at nighttime
     dim_lamp();  
   }
   else {
     brightness_setting = 0;   //Turn off lamp at all other times
   }
   analogWrite(dimmerPin, brightness_setting); //Set signal for brightness
-
-  //Records the time when lamp goes from off to on 
-  if((old_brightness == 0) && (brightness_setting != 0)) {
-    lampStartTime = currTime[0];
-    lampStartTime += currTime[1]/60;
-    lampStartTime += currTime[2]/3600;
-  }
     
 }
 
 /* Function: get_power_consumption
- * Calculates the power consumption of the heat lamp since last checked
- * and increments the daily consumption tracker
+ * Calculates the power consumption of the heat lamp for the current day.
  */
 float get_power_consumption() {
-  float timeHours = 0;   //The current time of day expressed in hours
-  timeHours += currTime[0];
-  timeHours += currTime[1]/60;
-  timeHours += currTime[2]/3600;
-  
-  if(currTime[0] == 0) { //Reset time and power tally at midnight
-    lampTime = 0;
-    power_consumption = 0;
-  }
-  lampTime = timeHours - lampStartTime; //Find lamp on-time since last polling
-  power_consumption += LAMP_WATTAGE*lampTime; //Watts * hours
-  lampStartTime = 0;   //Reset counter
+  float lamp_time = (LAMP_OFF_AM - LAMP_ON_AM) + (LAMP_OFF_PM - LAMP_ON_PM); //Time lamp is turned on
+  float power = LAMP_WATTAGE*lamp_time; //Compute watt-hour usage
+  return power;
 }
 
 /* Func: dim_lamp
